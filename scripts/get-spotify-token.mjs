@@ -1,73 +1,98 @@
-/**
- * Run this script ONCE to get your Spotify refresh token.
- *
- * Steps:
- *  1. Go to https://developer.spotify.com/dashboard and create an app
- *  2. Set redirect URI to: http://localhost:3000/callback
- *  3. Copy your Client ID and Client Secret below (or pass as env vars)
- *  4. Run: node scripts/get-spotify-token.mjs
- *  5. Open the printed URL in your browser, log in, approve access
- *  6. You'll be redirected to localhost:3000/callback?code=XXXX
- *  7. Copy the `code` from the URL and paste it when prompted
- *  8. The script prints your REFRESH TOKEN — save it in Netlify env vars
- */
+const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
+const SPOTIFY_NOW_PLAYING_URL = 'https://api.spotify.com/v1/me/player/currently-playing';
+const SPOTIFY_RECENTLY_PLAYED_URL = 'https://api.spotify.com/v1/me/player/recently-played?limit=1';
 
-import http from 'http';
-import { createInterface } from 'readline';
+async function getAccessToken() {
+  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN } = process.env;
 
-const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '5646c888222a4d6d9d91a762e086c9a5';
-const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '40257c8e91f84e59921cc4b541195b33';
-const REDIRECT_URI = 'https://127.0.0.1:3000/callback';
+  const basic = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64');
 
-const SCOPES = [
-  'user-read-currently-playing',
-  'user-read-recently-played',
-].join(' ');
-
-// Step 1: Print the auth URL
-const authUrl = new URL('https://accounts.spotify.com/authorize');
-authUrl.searchParams.set('client_id', CLIENT_ID);
-authUrl.searchParams.set('response_type', 'code');
-authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-authUrl.searchParams.set('scope', SCOPES);
-
-console.log('\n=== Spotify Token Generator ===\n');
-console.log('1. Open this URL in your browser:\n');
-console.log(authUrl.toString());
-console.log('\n2. After approving, you\'ll be redirected to localhost:3000/callback?code=...');
-console.log('3. Copy the `code` value from the URL\n');
-
-// Step 2: Wait for code input
-const rl = createInterface({ input: process.stdin, output: process.stdout });
-rl.question('Paste the code here: ', async (code) => {
-  rl.close();
-
-  // Step 3: Exchange code for tokens
-  const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-
-  const res = await fetch('https://accounts.spotify.com/api/token', {
+  const response = await fetch(SPOTIFY_TOKEN_URL, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${basic}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: code.trim(),
-      redirect_uri: REDIRECT_URI,
+      grant_type: 'refresh_token',
+      refresh_token: SPOTIFY_REFRESH_TOKEN,
     }),
   });
 
+  const data = await response.json();
+  console.log('Token response:', JSON.stringify(data));
+  return data.access_token;
+}
+
+async function getNowPlaying(token) {
+  const res = await fetch(SPOTIFY_NOW_PLAYING_URL, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  console.log('Now playing status:', res.status);
+  if (res.status === 204 || res.status > 400) return null;
+
   const data = await res.json();
+  console.log('Now playing data:', JSON.stringify(data));
+  if (!data || !data.item) return null;
 
-  if (data.error) {
-    console.error('\nError:', data.error, data.error_description);
-    process.exit(1);
+  return {
+    isPlaying: data.is_playing,
+    title: data.item.name,
+    artist: data.item.artists.map((a) => a.name).join(', '),
+    album: data.item.album.name,
+    albumArt: data.item.album.images[0]?.url ?? null,
+    songUrl: data.item.external_urls.spotify,
+  };
+}
+
+async function getRecentlyPlayed(token) {
+  const res = await fetch(SPOTIFY_RECENTLY_PLAYED_URL, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  console.log('Recently played status:', res.status);
+  const data = await res.json();
+  console.log('Recently played data:', JSON.stringify(data));
+  const item = data?.items?.[0]?.track;
+  if (!item) return null;
+
+  return {
+    isPlaying: false,
+    title: item.name,
+    artist: item.artists.map((a) => a.name).join(', '),
+    album: item.album.name,
+    albumArt: item.album.images[0]?.url ?? null,
+    songUrl: item.external_urls.spotify,
+  };
+}
+
+export const handler = async () => {
+  try {
+    const token = await getAccessToken();
+    let track = await getNowPlaying(token);
+    if (!track) {
+      track = await getRecentlyPlayed(token);
+    }
+
+    if (!track) {
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ isPlaying: false, title: null }),
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(track),
+    };
+  } catch (err) {
+    console.log('Error:', err.message);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message }),
+    };
   }
-
-  console.log('\n=== SUCCESS! Add these to Netlify Environment Variables ===\n');
-  console.log(`SPOTIFY_CLIENT_ID=${CLIENT_ID}`);
-  console.log(`SPOTIFY_CLIENT_SECRET=${CLIENT_SECRET}`);
-  console.log(`SPOTIFY_REFRESH_TOKEN=${data.refresh_token}`);
-  console.log('\n=== Done! ===\n');
-});
+};
