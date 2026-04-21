@@ -1,4 +1,0 @@
-[33m⠋[39m Waiting for Vite dev server to be ready on port 5173
-[32m√[39m Vite dev server ready on port 5173
-(node:9008) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
