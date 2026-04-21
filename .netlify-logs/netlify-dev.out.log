@@ -1,0 +1,32 @@
+⬥ Injecting environment variable values for all scopes
+⬥ AI Gateway is disabled for this account
+⬥ Injected project settings env vars: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN
+⬥ Setting up local dev server
+
+⬥ Starting Vite dev server
+
+   ╭─────────────────────── ⬥  ────────────────────────╮
+   │                                                   │
+   │   Local dev server ready: http://localhost:8888   │
+   │                                                   │
+   ╰───────────────────────────────────────────────────╯
+
+⬥ Loaded function spotify in Lambda compatibility mode (https://ntl.fyi/lambda-compat)
+
+> my-app@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v7.3.0  ready in 1118 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+14:35:20 [vite] changed tsconfig file detected: C:/Users/hp/Downloads/My Portfolio/.tmp-portfolio-main/Portfolio-main/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+14:46:41 [vite] .env changed, restarting server...
+14:46:41 [vite] server restarted.
+14:47:01 [vite] .env changed, restarting server...
+14:47:01 [vite] server restarted.
+15:12:12 [vite] .env changed, restarting server...
+15:12:12 [vite] (client) Re-optimizing dependencies because lockfile has changed
+15:12:12 [vite] server restarted.

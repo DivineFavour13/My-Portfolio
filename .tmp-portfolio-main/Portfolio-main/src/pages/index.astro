@@ -1,0 +1,16 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Hero from "@/components/Hero.astro";
+import BentoGrid from "@/components/BentoGrid";
+import ProjectSection from "@/components/ProjectSection";
+import BlogSection from "@/components/BlogSection";
+import Footer from "@/components/Footer";
+---
+
+<BaseLayout title="Elijah Emmanuel — Backend Developer">
+  <Hero />
+  <BentoGrid client:load />
+  <ProjectSection client:load />
+  <BlogSection client:load />
+  <Footer client:load/>
+</BaseLayout>
